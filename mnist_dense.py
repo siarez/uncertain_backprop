@@ -8,7 +8,7 @@ dtype = torch.FloatTensor
 # dtype = torch.cuda.FloatTensor # Uncomment this to run on GPU
 # N is batch size; D_in is input dimension;
 # H is hidden dimension; D_out is output dimension.
-training_set_size, D_in, H, D_out = 4000, 28 * 28, 20, 10
+training_set_size, D_in, H, D_out = 400, 28 * 28, 20, 10
 batch_size = 200
 testset_size = 2000
 
@@ -24,11 +24,17 @@ mnist = fetch_mldata('MNIST original', data_home='./')
 
 learning_rate = 0.007
 epochs = 10
-f, (ax1, ax2) = plt.subplots(2, 1, sharey=True)
-training_acc = []
+num_of_experiments = 50
+f, (ax1) = plt.subplots(1, 1, sharey=True)
+training_acc = {"new": [], "normal": []}
 
-for run in range(30):  # running the experiment multiple time to make sure changes are statistically significant
-
+# running the experiment multiple time to make sure changes are statistically significant
+# It runs `num_of_experiments` experiment with normal backprop and `num_of_experiments` experiment with new backprop
+for run in range(num_of_experiments * 2):
+    if (run < num_of_experiments):
+        backprop_type = "normal"
+    else:
+        backprop_type = "new"
     # create a list of random indices for training set
     train_idx = np.random.choice(len(mnist.data), training_set_size, replace=False)
     # create x and y by picking samples from the random indices
@@ -60,13 +66,13 @@ for run in range(30):  # running the experiment multiple time to make sure chang
             h_biased = torch.cat((h, torch.ones([batch_size, 1])), 1)  # adding biases
             y_logits = h_biased.mm(w2)
             y_pred = sigmoid(y_logits)
-            if b == num_of_batches - 1:
+            if b == num_of_batches - 1 and t == epochs - 1:
                 # Compute and print loss
                 loss = (y_pred - y_onehot_batches[b]).pow(2).sum()
                 #print(t, loss)
                 _, predicted_classes = torch.max(y_pred, dim=1)
                 accuracy = torch.sum(torch.eq(predicted_classes, y_batches[b][:, 0])) / batch_size
-                training_acc.append(accuracy)
+                training_acc[backprop_type].append(accuracy)
                 #print('batch accuracy: ', accuracy)
 
             # Backprop to compute gradients of w1 and w2 with respect to loss
@@ -80,19 +86,22 @@ for run in range(30):  # running the experiment multiple time to make sure chang
             dSig_h_broadcastable = dSigmoid(h).unsqueeze(-1)
             delta_h_expanded = torch.mul(expanded_dEdh, dSig_h_broadcastable)
 
-            if False:
-                # This block of code is for tweaking backprop. with information derived from distributions.
-                delta_h_sum = torch.sum(delta_h_expanded)
-                delta_h_var = torch.std(delta_h_expanded, dim=0)
-                adjustment_coef = torch.exp(delta_h_var)
-                delta_h_expanded_adjusted = torch.div(delta_h_expanded, adjustment_coef)
-                delta_h_expanded_adjusted_sum = torch.sum(delta_h_expanded_adjusted)
-                weight_scaling = delta_h_expanded_adjusted_sum / delta_h_sum
-                delta_h = torch.sum(delta_h_expanded, dim=2).mul(weight_scaling)
+            if backprop_type == "new":
+                # calculates delta with
+                delta_h_sum = torch.sum(torch.abs(delta_h_expanded))
+                delta_h_std = torch.std(delta_h_expanded, dim=0)
+                delta_h_mean = torch.mean(delta_h_expanded, dim=0)
+                # calculating `adjustment_coef` this way, means the bigger the std,
+                # less weight is attributed to the deltas of that weight
+                adjustment_coef = 1 / torch.exp(torch.div(delta_h_std, torch.abs(delta_h_mean)))
+                delta_h_expanded_adjusted = torch.mul(delta_h_expanded, adjustment_coef)
+                delta_h_expanded_adjusted_sum = torch.sum(torch.abs(delta_h_expanded_adjusted))
+                weight_scaling = delta_h_sum / delta_h_expanded_adjusted_sum
+                #rdelta_h = torch.sum(delta_h_expanded, dim=2).mul(weight_scaling)
                 delta_h = torch.sum(delta_h_expanded_adjusted, dim=2).mul(weight_scaling)
-            else:
+            elif backprop_type == "normal":
                 # calculates delta like normal backprop
-                delta_h = torch.sum(delta_h_expanded, dim=2)  # calculates delta for each heuron in the hidden layer for each training sample
+                delta_h = torch.sum(delta_h_expanded, dim=2)
 
             grad_w1 = x_batches[b].t().mm(delta_h)
             # Update weights using gradient descent
@@ -102,13 +111,23 @@ for run in range(30):  # running the experiment multiple time to make sure chang
             hist_min = -0.025  # torch.min(expanded_dEdh[:, 1, 1])*1.5
             hist_max = 0.025  # torch.max(expanded_dEdh[:, 1, 1])*1.5
             neuron_to_plot = 0  # index of the neuron we want to plot deltas for
-            if t == 0 and b == 0 and False:
+            if t == 0 and b == 0 and backprop_type == "normal" and False:
+                # Plots two distributions of deltas for two neurons that "neuron_to_plot" outputs to.
+                # Those two neuron are select base on their average delta for the batch.
+                # Two extremes (i.e. min and max) are chosen to highlight my argument
                 delta_h_means = torch.mean(delta_h_expanded, dim=0)  # calculates the batch's average delta for each weight from hidden to output layer
                 _, max_index = torch.max(delta_h_means[neuron_to_plot], dim=0)  #for neuron_to_plot hidden layer, it find the index of the weight with max delta
                 _, min_index = torch.min(delta_h_means[neuron_to_plot], dim=0)  #for neuron_to_plot in hidden layer, it find the index of the weight with min delta
                 ax1.hist(delta_h_expanded[:, neuron_to_plot, max_index[0]].numpy(), bins=101, range=(hist_min, hist_max), histtype='step')
                 ax2.hist(delta_h_expanded[:, neuron_to_plot, min_index[0]].numpy(), bins=101, range=(hist_min, hist_max), histtype='step')
-
+            elif t == 0 and b == 0 and backprop_type == "normal":
+                # plots mean vs. std for deltas of each weight between hidden and output layer
+                num_to_draw = 3  # number of neurons to draw deltas for. (If we draw all of them, the plot gets cluttered)
+                delta_h_means = torch.mean(delta_h_expanded, dim=0)
+                delta_h_std = torch.std(delta_h_expanded, dim=0)
+                # all markers of each neuron in the hidden layer will have the same color
+                colors = np.repeat(np.arange(num_to_draw), D_out)
+                plt.scatter(delta_h_means.numpy()[0:num_to_draw, :].flat, delta_h_std.numpy()[0:num_to_draw, :].flat, s=8, c=colors)
     # Starting test
     # picking test data
     # removing samples that are present in training set
@@ -137,7 +156,14 @@ for run in range(30):  # running the experiment multiple time to make sure chang
     accuracy = torch.sum(torch.eq(predicted_classes, test_y[:, 0])) / testset_size
     #print('test accuracy: ', accuracy)
 
-training_acc = np.array(training_acc)
-print(np.mean(training_acc), np.var(training_acc))
+for key, arr in training_acc.items():
+    arr = np.array(arr)
+    accuracy_std = np.std(arr)
+    accuracy_mean = np.mean(arr)
+    margin_of_error = 1.96 * accuracy_std / np.sqrt(num_of_experiments)  # calculates margin of error for 95% CI
+    conf_interval = (accuracy_mean - margin_of_error, accuracy_mean + margin_of_error)
+    print(key + " CI: ", conf_interval)
+    print(key + " mean: ", accuracy_mean)
+
 
 #plt.show()
