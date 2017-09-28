@@ -11,3 +11,4 @@ I used these uncertainty measures to alter the back prop. algorithm, and much mo
 I implemented a quick and dirty neural network for the good ol' MNIST with PyTorch (which is quickly becoming my favorite library for prototyping)
 There is a slight tweak to this backprop. calculation which allows you to look at distributions of deltas that normally get reduce-summed in `matmul`s.
 
+A blog post is in the works to explain the results of this project.

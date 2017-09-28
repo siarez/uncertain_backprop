@@ -2,7 +2,8 @@ from sklearn.datasets import fetch_mldata
 import torch
 import numpy as np
 from matplotlib import pyplot as plt
-
+import pickle
+import os
 
 dtype = torch.FloatTensor
 # dtype = torch.cuda.FloatTensor # Uncomment this to run on GPU
@@ -11,6 +12,7 @@ dtype = torch.FloatTensor
 training_set_size, D_in, H, D_out = 400, 28 * 28, 20, 10
 batch_size = 200
 testset_size = 2000
+randomWeights_path = "randomWeights"
 
 def sigmoid(logits):
     return 1.0 / (1.0 + np.exp(-logits))
@@ -18,14 +20,33 @@ def sigmoid(logits):
 def dSigmoid(h):
     return np.multiply(h, 1 - h)
 
+def initializeWeights(fromFile=False):
+    """
+    This method randomized weights and save the random value so they can be used later.
+    Save is used when we want to use the same random initializations weights between experiments.
+    :param fromFile: If True, weights are initialized from file.
+    :return:
+    """
+    if fromFile == True and os.path.isfile(randomWeights_path):
+        w1, w2 = pickle.load(open(randomWeights_path, "rb"))
+
+    else:
+        w1 = torch.randn(D_in + 1, H).type(dtype) / np.sqrt(D_in + 1)
+        w2 = torch.randn(H + 1, D_out).type(dtype) / np.sqrt(H + 1)
+        pickle.dump((w1, w2), open(randomWeights_path, "wb"))
+    return w1, w2
+
 # preparing data
 mnist = fetch_mldata('MNIST original', data_home='./')
 
 
 learning_rate = 0.007
 epochs = 10
-num_of_experiments = 50
+num_of_experiments = 1
+
 f, (ax1) = plt.subplots(1, 1, sharey=True)
+ax1.set_facecolor('black')
+f.set_dpi(200)
 training_acc = {"new": [], "normal": []}
 
 # running the experiment multiple time to make sure changes are statistically significant
@@ -54,8 +75,7 @@ for run in range(num_of_experiments * 2):
     y_onehot_batches = torch.split(y_onehot, batch_size)
 
     # Randomly initialize weights
-    w1 = torch.randn(D_in + 1, H).type(dtype) / np.sqrt(D_in + 1)
-    w2 = torch.randn(H + 1, D_out).type(dtype) / np.sqrt(H + 1)
+    w1, w2 = initializeWeights(fromFile=True)
 
     for t in range(epochs):
         num_of_batches = int(training_set_size / batch_size)
@@ -122,12 +142,14 @@ for run in range(num_of_experiments * 2):
                 ax2.hist(delta_h_expanded[:, neuron_to_plot, min_index[0]].numpy(), bins=101, range=(hist_min, hist_max), histtype='step')
             elif t == 0 and b == 0 and backprop_type == "normal":
                 # plots mean vs. std for deltas of each weight between hidden and output layer
-                num_to_draw = 3  # number of neurons to draw deltas for. (If we draw all of them, the plot gets cluttered)
+                num_to_draw = 5  # number of neurons to draw deltas for. (If we draw all of them, the plot gets cluttered)
                 delta_h_means = torch.mean(delta_h_expanded, dim=0)
                 delta_h_std = torch.std(delta_h_expanded, dim=0)
                 # all markers of each neuron in the hidden layer will have the same color
                 colors = np.repeat(np.arange(num_to_draw), D_out)
-                plt.scatter(delta_h_means.numpy()[0:num_to_draw, :].flat, delta_h_std.numpy()[0:num_to_draw, :].flat, s=8, c=colors)
+                # all markers of each neuron in the output layer will have the same color
+                colors = list(range(D_out)) * num_to_draw
+                plt.scatter(delta_h_means.numpy()[0:num_to_draw, :].flat, delta_h_std.numpy()[0:num_to_draw, :].flat, s=4, c=colors, cmap='Set1')
     # Starting test
     # picking test data
     # removing samples that are present in training set
@@ -166,4 +188,4 @@ for key, arr in training_acc.items():
     print(key + " mean: ", accuracy_mean)
 
 
-#plt.show()
+plt.show()
