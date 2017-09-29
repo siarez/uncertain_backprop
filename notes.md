@@ -26,7 +26,7 @@ These distributions can be marginalized for classes in training data
 2. How can this information be leveraged?
 3. Can we determine over-fit and under fit?
 
-### Ideas for each distribution mentioned about
+### Ideas for each distribution mentioned above
 * For the second type of dist., we can compare distribution of deltas coming from neurons in the next layer for a batch. One idea is that if there is a strong pull on delta from two different directions (two sharp peaks one smaller than zero and one bigger than zero) we can split the neuron to two.
 * For the third type of dist, a neuron can remove itself, if there is a direct relationship between a neuron in the previous layer and a neuron in the next layer. Basically a neuron can find out if it is an unnecessary middle man.
 * For the second type of dist., if the distribution is centered around zero but is wide, it means the network behind it it under fitting. It is interesting because it could tell us where to add neurons.
