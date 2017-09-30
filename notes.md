@@ -32,7 +32,9 @@ These distributions can be marginalized for classes in training data
 * For the second type of dist., if the distribution is centered around zero but is wide, it means the network behind it it under fitting. It is interesting because it could tell us where to add neurons.
 * For the 4th type of dist, maybe we can get rid of neurons that have a very uniform distribution of input wights. I think a very uniform weight distribution means the neuron isn't doing much?
 * It also be interesting to see if looking at this distributions we could tell whether the network has too many dof and is prone to over fitting. It could help us in pruning the network.
+* Use the distribution of deltas during training to create certainty info in the forward prop. 
 
+* Gather statistics about whether the sum of deltas each neuron in the layer before received, is in the same direction as the delta you(a neuron) propagated back. This will tell you whether you are like to receive useful input from that neuron. 
 
 
 

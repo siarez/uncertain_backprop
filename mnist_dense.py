@@ -3,8 +3,7 @@ import torch
 import numpy as np
 from matplotlib import pyplot as plt
 from matplotlib.markers import MarkerStyle
-from matplotlib.cm import ScalarMappable
-from cycler import cycler
+import matplotlib.patches as mpatches
 import pickle
 import os
 
@@ -51,7 +50,6 @@ f, (ax1) = plt.subplots(1, 1, sharey=True)
 ax1.set_facecolor('black')
 f.set_dpi(200)
 markers = list(MarkerStyle.markers.keys())
-colors_mapper = ScalarMappable(cmap='Set1')
 
 training_acc = {"new": [], "normal": []}
 
@@ -151,19 +149,17 @@ for run in range(num_of_experiments * 2):
                 num_to_draw = 10  # number of neurons to draw deltas for. (If we draw all of them, the plot gets cluttered)
                 delta_h_means = torch.mean(delta_h_expanded, dim=0)
                 delta_h_std = torch.std(delta_h_expanded, dim=0)
-                # all markers of each neuron in the hidden layer will have the same color
-                colors = np.repeat(np.arange(num_to_draw), D_out)
-                # all markers of each neuron in the output layer will have the same color
-                colors = list(range(D_out))# * num_to_draw
-                # ax1.scatter(delta_h_means.numpy()[0:num_to_draw, :].flat, delta_h_std.numpy()[0:num_to_draw, :].flat, s=4, c=colors, cmap='Set1', marker="<")
-                #colors = colors_mapper.to_rgba(list(range(D_out+1)))
-                #print(colors)
-                #cycler
+                cmap = plt.get_cmap("Set1")
+                colors = [cmap(1. * i / (D_out-1)) for i in range(D_out-1)]
+                colors.append([0, 0, 1, 1])
                 for hidden_neuron_idx in range(num_to_draw):
                     ax1.scatter(delta_h_means.numpy()[hidden_neuron_idx, :].flat,
                                 delta_h_std.numpy()[hidden_neuron_idx, :].flat,
                                 s=4, c=colors, cmap='Set1', marker=markers[hidden_neuron_idx])
-                #ax1.legend(range(D_out))
+                ax1.legend(handles=[mpatches.Patch(color=colors[i], label=str(i)) for i in range(D_out)],
+                           bbox_to_anchor=(1, 1),
+                           bbox_transform=plt.gcf().transFigure)
+
     # Starting test
     # picking test data
     # removing samples that are present in training set
