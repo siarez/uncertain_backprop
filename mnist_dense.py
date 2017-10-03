@@ -46,7 +46,7 @@ learning_rate = 0.007
 epochs = 10
 num_of_experiments = 1
 
-f, (ax1) = plt.subplots(1, 1, sharey=True)
+f, (ax1, ax2) = plt.subplots(1, 2, sharey=False)
 ax1.set_facecolor('black')
 f.set_dpi(200)
 markers = list(MarkerStyle.markers.keys())
@@ -146,19 +146,28 @@ for run in range(num_of_experiments * 2):
                 ax2.hist(delta_h_expanded[:, neuron_to_plot, min_index[0]].numpy(), bins=101, range=(hist_min, hist_max), histtype='step')
             elif t == 0 and b == 0 and backprop_type == "normal":
                 # plots mean vs. std for deltas of each weight between hidden and output layer
-                num_to_draw = 10  # number of neurons to draw deltas for. (If we draw all of them, the plot gets cluttered)
+                hidden_num_to_draw = 1  # number of neurons to draw deltas for. (If we draw all of them, the plot gets cluttered)
+                output_num_to_draw = 10
                 delta_h_means = torch.mean(delta_h_expanded, dim=0)
                 delta_h_std = torch.std(delta_h_expanded, dim=0)
                 cmap = plt.get_cmap("Set1")
                 colors = [cmap(1. * i / (D_out-1)) for i in range(D_out-1)]
                 colors.append([0, 0, 1, 1])
-                for hidden_neuron_idx in range(num_to_draw):
-                    ax1.scatter(delta_h_means.numpy()[hidden_neuron_idx, :].flat,
-                                delta_h_std.numpy()[hidden_neuron_idx, :].flat,
-                                s=4, c=colors, cmap='Set1', marker=markers[hidden_neuron_idx])
+                markers = ["o"] * 20
+                for hidden_neuron_idx in range(hidden_num_to_draw):
+                    ax1.scatter(delta_h_means.numpy()[hidden_neuron_idx, 0:output_num_to_draw].flat,
+                                delta_h_std.numpy()[hidden_neuron_idx, 0:output_num_to_draw].flat,
+                                s=4, c=colors, cmap="Set1", marker=markers[hidden_neuron_idx])
                 ax1.legend(handles=[mpatches.Patch(color=colors[i], label=str(i)) for i in range(D_out)],
                            bbox_to_anchor=(1, 1),
                            bbox_transform=plt.gcf().transFigure)
+                ax1.set_xlim(-0.02, 0.02)
+                ax1.set_ylim(-0.0001, 0.015)
+
+                #Calculating and ploting the dist. of means of deltas for each weight
+                delta_h_means_std = torch.std(delta_h_means, dim=1)
+                ax2.scatter(range(H), delta_h_means_std.numpy(), s=4, c="black", cmap="Set1")
+
 
     # Starting test
     # picking test data

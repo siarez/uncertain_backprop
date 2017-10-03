@@ -3,11 +3,11 @@
 * Make the network similar to Ng's course assignment and replicate the results. (done)
 * Plot learning rate and PDF on the delta's for each neuron in a mini-batch. (done)
 * Calculate stats for the delta's for each neuron. (done)
-* Update the back prop. to take into account uncertainty in delta's and measure performance (i.e. learning rate ... ) (kinda done)
-* Do better random initialization to get consistent convergence. 
+* Update the back prop. to take into account uncertainty in delta's and measure performance (i.e. learning rate ... ) (done, need to document in the report)
+* Do better random initialization to get consistent convergence. (done)
 * Train the network on 8 of the 10 classes, then test on the 2 classes unseen during training and measure distribution of activations (in the hidden layer?).
     * See if the distributions of activations for the unseen classes can be grouped by a simple unsupervised clustering algorithm.
-* Change this to a Jupyter notebook for easier tweaking and better explanation of what's going on
+* Idea: Change this to a Jupyter notebook for easier tweaking and better explanation of what's going on
 
 ### Thoughts
 As the network learns, distribution of deltas  becomes narrower and centers around zero, because the network is making less mistakes.
