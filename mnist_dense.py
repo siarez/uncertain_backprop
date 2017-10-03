@@ -46,7 +46,7 @@ learning_rate = 0.007
 epochs = 10
 num_of_experiments = 1
 
-f, (ax1, ax2) = plt.subplots(1, 2, sharey=False)
+f, (ax1, ax2) = plt.subplots(1, 2, sharey=True)
 ax1.set_facecolor('black')
 f.set_dpi(200)
 markers = list(MarkerStyle.markers.keys())
@@ -166,7 +166,8 @@ for run in range(num_of_experiments * 2):
 
                 #Calculating and ploting the dist. of means of deltas for each weight
                 delta_h_means_std = torch.std(delta_h_means, dim=1)
-                ax2.scatter(range(H), delta_h_means_std.numpy(), s=4, c="black", cmap="Set1")
+                delta_h_means_mean = torch.mean(delta_h_means, dim=1)
+                ax2.scatter(delta_h_means_mean.numpy(), delta_h_means_std.numpy(), s=4, c="black", cmap="Set1")
 
 
     # Starting test
